@@ -1,0 +1,35 @@
+{
+    "metadata": {
+        "name": "Example question file",
+        "date": "8/4/2020",
+        "author": "Tera"
+    },
+    "questions": [
+        {
+            "type": "fuzzy-string",
+            "question": "What is the capital of Virginia?",
+            "answer": "Richmond"
+        },
+        {
+            "type": "strict-string",
+            "question": "What is 2+2?",
+            "answer": "4"
+        },
+        {
+            "type": "multiple-choice",
+            "question": "How old are you?",
+            "choices": [
+                "17",
+                "18",
+                "19",
+                "20"
+            ],
+            "answer": 1
+        },
+        {
+            "type": "true-false",
+            "question": "Are you alive?",
+            "answer": true
+        }
+    ]
+}
