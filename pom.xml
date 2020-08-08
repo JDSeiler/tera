@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <!-- Run with java -jar name-of-jar.jar -->
-    <!-- Manual compile with: mvn clean compile assembly single -->
+    <!-- Manual compile with: mvn clean compile assembly:single -->
     <groupId>org.example</groupId>
     <artifactId>flash-cards</artifactId>
     <version>1.0-SNAPSHOT</version>
