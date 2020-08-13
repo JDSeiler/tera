@@ -1,6 +1,5 @@
 import answers.Answer;
 import questions.Question;
-import questions.Type;
 import util.AnswerFetcher;
 import util.JsonLoader;
 
@@ -16,6 +15,8 @@ public class Driver {
 
         ArrayList<Question> questionList = JsonLoader.createQuestionList(jsonQuestions);
 
+        int incorrectQuestions = 0;
+        ArrayList<String> missedQuestions = new ArrayList<>();
         for (int i = 0; i < questionList.size(); i++) {
             Question current = questionList.get(i);
             System.out.printf("Question %d of %d:%n", i+1, questionList.size());
@@ -28,8 +29,21 @@ public class Driver {
             } else {
                 System.out.printf("Incorrect, the correct answer was:%n");
                 current.showAnswer();
+                incorrectQuestions++;
+                missedQuestions.add(current.getQuestionText());
                 System.out.println();
             }
+        }
+
+        System.out.println("+============+");
+        System.out.println("|   Report   |");
+        System.out.println("+============+");
+
+        System.out.printf("You missed %d questions out of %d%n", incorrectQuestions, questionList.size());
+        System.out.printf("Grade: %d%n", Math.round((1 - (float) incorrectQuestions / (float) questionList.size()) * 100));
+        System.out.println("Here are the questions you missed: ");
+        for (String question : missedQuestions) {
+            System.out.printf("- %s%n", question);
         }
     }
 }
