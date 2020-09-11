@@ -8,6 +8,13 @@ import javax.json.JsonObject;
 import java.util.ArrayList;
 
 public class Driver {
+    /*
+    * Improvement plan:
+    * 1. Remove the type enum in favor of instanceof
+    * 2. Remove the generic parameter in Question by:
+    *   a. Changing the parameter of checkAnswer to type String
+    *   b. Move all the type-checking logic into each concrete subclass of Question
+    * */
     public static void main(String[] args) {
         JsonObject test = JsonLoader.loadJsonFromQuestionSet(args[0]);
         JsonArray jsonQuestions = test.getJsonArray("questions");
