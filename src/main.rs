@@ -1,34 +1,71 @@
-/*
-Basic rewrite plan:
-- Review functionality of the Java version
-- Define YAML file format
-- Define default file storage location
+use clap::{Parser, Subcommand};
+use std::fs;
+use std::io::{self, Error, ErrorKind};
 
-Minimal amount of stuff:
-The CLI will be very simple, I think. At a minimum you need:
-1. A command to start a quiz
-2. A command to list available quizzes (for ease-of-use)
-3. (Nice stuff like help commands that the clap crate has)
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+struct Cli {
+    #[clap(subcommand)]
+    command: Command
+}
 
-There are more possibilities/features, but those are the minimum.
-
-Then, there needs to be code that can read the question sets and
-report errors in the file.
-There must also be code that can give the interactive quiz and
-report the grade you got.
-
-At the start, question sets will be "flat". I will not set out to 
-allow for "including" other question sets yet, since that's kinda
-complicated. I would also be interested in storing performance over
-time for question sets, or other statistics.
-
-The actual UX of taking the quiz could also use some work. But I don't 
-want to go whole hog into using something like Cursive or Iced. This 
-project, ideally, doesn't take too much time. I just do the rewrite so 
-and then move on to something more interesting.
-
-*/
+#[derive(Subcommand)]
+enum Command {
+    /// Initialize Tera
+    Init {
+        /// Overwrite the Tera directory, if it already exists
+        #[clap(short, long, action)]
+        force: bool
+    },
+    /// List all available quizzes
+    List,
+    /// Take a quiz
+    Take {
+        /// The name of the quiz to take
+        #[clap(value_parser)]
+        quiz: String
+    }
+}
 
 fn main() {
-    println!("Hello, world!");
+    let cli = Cli::parse();
+    match &cli.command {
+        Command::Init { force } => {
+            println!("Initializing Tera. Will we force? {}", force);
+            initialize(*force).map_or_else(
+                |e| println!("Could not initialize: {:?}", e.to_string()),
+                |_| println!("The ~/.tera directory has been succesfully initialized")
+            )
+        },
+        Command::List => {
+            println!("Listing all quizzes")
+        },
+        Command::Take { quiz } => {
+            println!("Taking quiz: {}", quiz)
+        }
+    }
+}
+
+
+fn initialize(force: bool) -> io::Result<()> {
+    let user_home = home::home_dir().expect("Cannot determine users home directory! Aborting.");
+
+    let tera_directory = user_home.join(".tera");
+    let tera_sets = tera_directory.join("sets");
+    // TODO: This isn't all that platform agnostic, I don't think.
+    // TODO: Consider what would happen if .tera was a file.
+    if !tera_directory.is_dir() {
+        println!("~/.tera does not exist or is not a directory, creating folders...");
+        fs::create_dir_all(&tera_directory)
+            .and_then(|()| fs::create_dir(&tera_sets))
+    } else {
+        if force {
+            println!("Forcefully creating ~/.tera folder");
+            // GULP, big danger doing recursive delete!
+            return fs::remove_dir_all(&tera_directory)
+                .and_then(|()| fs::create_dir_all(&tera_directory))
+                .and_then(|()| fs::create_dir(&tera_sets))
+        }
+        Err(Error::new(ErrorKind::AlreadyExists, "~/.tera already exists and the --force flag was not specified!"))
+    }
 }
