@@ -1,7 +1,11 @@
 use clap::{Parser, Subcommand};
-use std::fs::{self, DirEntry, ReadDir};
+use files::{tera_directory, traverse_sets_directory};
+use std::fs;
 use std::io::{self, Error, ErrorKind};
 use std::path::{Path, PathBuf};
+
+mod quizzes;
+mod files;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -28,12 +32,6 @@ enum Command {
     },
 }
 
-enum TeraObject {
-    QuizFile(PathBuf),
-    Dir(PathBuf),
-    Error(String),
-}
-
 fn main() {
     let cli = Cli::parse();
     match &cli.command {
@@ -45,7 +43,17 @@ fn main() {
             )
         }
         Command::List => {
-            list()
+            let question_set_directory_contents = traverse_sets_directory();
+            let question_sets: Vec<&PathBuf> = question_set_directory_contents 
+                .iter()
+                .inspect(|q| {
+                    if q.is_err() {
+                        println!("Error reading file: {}", q.as_ref().unwrap_err())
+                    }
+                })
+                .flatten()
+                .collect();
+            pretty_print(&question_sets);
         }
         Command::Take { quiz } => {
             println!("Taking quiz: {}", quiz)
@@ -53,59 +61,7 @@ fn main() {
     }
 }
 
-fn list() {
-    let tera_directory = tera_directory();
-    let sets_root = tera_directory.join("sets");
-
-    let mut to_explore: Vec<PathBuf> = Vec::new();
-    let mut question_sets: Vec<PathBuf> = Vec::new();
-    let mut errors: Vec<String> = Vec::new();
-
-    to_explore.push(sets_root);
-
-    while !to_explore.is_empty() {
-        let current_directory = to_explore.pop().unwrap();
-
-        for tera_object in read_dir(&current_directory) {
-            match tera_object {
-                TeraObject::QuizFile(path) => question_sets.push(path),
-                TeraObject::Dir(path) => to_explore.push(path),
-                TeraObject::Error(msg) => errors.push(msg),
-            }
-        }
-    }
-
-    pretty_print(&question_sets);
-}
-
-fn read_dir(d: &PathBuf) -> Vec<TeraObject> {
-    let mut contents = Vec::new();
-
-    if let Ok(dir_contents) = fs::read_dir(d) {
-        let valid_entries = filter_failed_reads(dir_contents);
-
-        for entry in valid_entries {
-            if let Ok(meta) = entry.metadata() {
-                if meta.is_dir() {
-                    contents.push(TeraObject::Dir(entry.path()));
-                } else if meta.is_file() && named_as_yaml(&entry) {
-                    contents.push(TeraObject::QuizFile(entry.path()));
-                } else {
-                    let err_message = format!("Unknown file type for: {}", entry.path().display());
-                    contents.push(TeraObject::Error(err_message));
-                }
-            }
-        }
-    } else {
-        contents.push(TeraObject::Error(format!(
-            "Can't read directory contents for {}",
-            d.display()
-        )));
-    }
-    contents
-}
-
-fn pretty_print(paths: &[PathBuf]) {
+fn pretty_print(paths: &[&PathBuf]) {
     let tera_directory = tera_directory();
     let sets_root = tera_directory.join("sets");
 
@@ -132,30 +88,6 @@ fn pretty_print(paths: &[PathBuf]) {
 
 fn path_length(p: &Path) -> usize {
     p.iter().fold(0, |accum, _item| accum + 1)
-}
-
-fn named_as_yaml(f: &DirEntry) -> bool {
-    f.file_name().to_str().map_or(false, |name| {
-        name.ends_with(".yml") || name.ends_with(".yaml")
-    })
-}
-
-fn filter_failed_reads(dir: ReadDir) -> impl Iterator<Item = DirEntry> {
-    dir.inspect(|entry| {
-        if entry.is_err() {
-            println!(
-                "Error while reading file/directory: {}",
-                entry.as_ref().unwrap_err()
-            );
-        }
-    })
-    .flatten()
-}
-
-fn tera_directory() -> PathBuf {
-    let user_home = home::home_dir().expect("Cannot determine users home directory! Aborting.");
-
-    user_home.join(".tera")
 }
 
 fn initialize(force: bool) -> io::Result<()> {
