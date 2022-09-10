@@ -1,5 +1,6 @@
 use crate::files::traverse_sets_directory;
 use serde::Deserialize;
+use core::fmt;
 use std::path::{Path, PathBuf};
 use std::fs;
 
@@ -27,21 +28,40 @@ pub enum Question {
 
 #[derive(Debug)]
 pub enum QuizLookupError {
-    NotFound,
+    NotFound(String),
     Ambiguous(Vec<PathBuf>),
+    BadYaml(String),
+    IoFailure(String)
 }
 
-pub fn read_quiz<P: AsRef<Path>>(path_to_quiz: P) -> Result<Quiz, String> {
-    if let Ok(quiz_contents) = fs::read_to_string(path_to_quiz) {
-        return match serde_yaml::from_str::<Quiz>(&quiz_contents) {
-            Ok(quiz) => Ok(quiz),
-            Err(e) => {
-                println!("{:?}", e);
-                return Err("Failed to parse YAML".to_string());
-            }
+impl fmt::Display for QuizLookupError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            QuizLookupError::NotFound(path) => write!(f, "Could not find the requested quiz: {}", path),
+            QuizLookupError::Ambiguous(all_matching_files) => {
+                let message = format!("Requested quiz matched multiple files. Matches:\n{:#?}", all_matching_files);
+                write!(f, "{}", message)
+            },
+            QuizLookupError::BadYaml(error_message) => write!(f, "Failed to parse YAML! Reason: {}", error_message),
+            QuizLookupError::IoFailure(error_message) => write!(f, "Failed to read quiz file from disk! Reason: {}", error_message),
         }
     }
-    Err("Failed to read file".to_string())
+}
+
+pub fn read_quiz<P: AsRef<Path>>(path_to_quiz: P) -> Result<Quiz, QuizLookupError> {
+    match fs::read_to_string(path_to_quiz) {
+        Ok(quiz_contents) => {
+            match serde_yaml::from_str::<Quiz>(&quiz_contents) {
+                Ok(quiz) => Ok(quiz),
+                Err(e) => {
+                    Err(QuizLookupError::BadYaml(e.to_string()))
+                }
+            }
+        }
+        Err(io_error) => {
+            Err(QuizLookupError::IoFailure(io_error.to_string()))
+        }
+    }
 }
 
 pub fn find_quiz(name_or_path: String) -> Result<PathBuf, QuizLookupError> {
@@ -55,7 +75,7 @@ pub fn find_quiz(name_or_path: String) -> Result<PathBuf, QuizLookupError> {
         .cloned()
         .collect();
     if matches.is_empty() {
-        return Err(QuizLookupError::NotFound);
+        return Err(QuizLookupError::NotFound(format!("{}", target_path.display())));
     } else if matches.len() > 1 {
         return Err(QuizLookupError::Ambiguous(matches));
     }

@@ -59,11 +59,9 @@ fn main() {
         }
         Command::Take { quiz } => {
             println!("Taking quiz: {}", quiz);
-            // TODO: Clean up the error handling and validate multiple choice answers
-            // Then we'll move on to the actual "taking a quiz" loop
             match find_quiz(quiz.to_string()).map(read_quiz) {
                 Ok(quiz_object) => println!("{:#?}", quiz_object),
-                Err(e) => println!("An error occurred while fetching quiz: {:?}", e)
+                Err(e) => println!("{}", e)
             }
         }
     }
