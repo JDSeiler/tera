@@ -84,3 +84,41 @@ pub fn find_quiz(name_or_path: String) -> Result<PathBuf, QuizLookupError> {
         .pop()
         .expect("`matches` should have exactly 1 element"))
 }
+
+#[derive(Debug)]
+pub struct ValidationError {
+    idx: usize,
+    options: Vec<String>,
+    incorrect_key: String
+}
+
+impl fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Answer for question {} does not match any of the options", self.idx)
+            .and_then(|_|  write!(f, "Options: {:#?}", self.options))
+            .and_then(|_| write!(f, "Answer: {}", self.incorrect_key))
+    }
+}
+
+pub fn validate_answer_key(quiz: &Quiz) -> Result<(), Vec<ValidationError>> {
+    let errors: Vec<ValidationError> = quiz.questions.iter().enumerate().filter_map(|(idx, question)| {
+        match question {
+            Question::Multi { options, a, .. } => {
+                if !options.contains(a) {
+                    return Some(ValidationError {
+                        idx,
+                        options: options.to_vec(),
+                        incorrect_key: a.to_string()
+                    });
+                }
+                None
+            },
+            _ => None,
+        }
+    }).collect();
+    if errors.is_empty() {
+        return Ok(());
+    }
+    Err(errors)
+}
+

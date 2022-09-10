@@ -4,7 +4,7 @@ use std::fs;
 use std::io::{self, Error, ErrorKind};
 use std::path::{Path, PathBuf};
 
-use crate::quizzes::{find_quiz, read_quiz};
+use crate::quizzes::{find_quiz, read_quiz, validate_answer_key};
 
 mod quizzes;
 mod files;
@@ -59,8 +59,14 @@ fn main() {
         }
         Command::Take { quiz } => {
             println!("Taking quiz: {}", quiz);
-            match find_quiz(quiz.to_string()).map(read_quiz) {
-                Ok(quiz_object) => println!("{:#?}", quiz_object),
+            match find_quiz(quiz.to_string()).and_then(read_quiz) {
+                Ok(quiz_object) => { 
+                    if let Err(errs) = validate_answer_key(&quiz_object) {
+                        errs.iter().for_each(|e| println!("{}", e));
+                    } else {
+                        println!("{:#?}", quiz_object);
+                    }
+                }
                 Err(e) => println!("{}", e)
             }
         }
